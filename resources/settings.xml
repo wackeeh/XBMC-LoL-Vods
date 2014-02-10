@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <setting id="highlight_recommended_games" type="bool" default="false" label="Highlight Recommended Games in the game overview?"/>
+</settings>
