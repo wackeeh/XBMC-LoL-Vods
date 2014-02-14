@@ -13,3 +13,8 @@ Installation
 ==============================================================================
 
 Download the zip and unzip in the XBMC plugin directory
+
+Known Issues (Feb 14th)
+==============================================================================
+* Works with newer version of the LoL Event VODS reddit layout
+* Youtube Player does not use the 't=' parameter (yet?)
