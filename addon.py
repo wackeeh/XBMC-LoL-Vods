@@ -1,6 +1,8 @@
-from xbmcswift2 import Plugin
-from Reddit import Reddit
 import re
+
+from xbmcswift2 import Plugin
+
+from Reddit import Reddit
 
 
 plugin = Plugin()
@@ -29,7 +31,8 @@ def show_events():
             status = "In Progress"
             if (lolevent.status == 1):
                 status = "Finished"
-            item  = { 'label': lolevent.title + " (" + status + ")", 'path': plugin.url_for('show_event', eventId=lolevent.eventId) }
+            item  = { 'label': lolevent.title + " (" + status + ")", 'path': plugin.url_for('show_event', eventId=lolevent.eventId),
+                      'thumbnail' : lolevent.imageUrl }
             items.append(item)
 
     return items

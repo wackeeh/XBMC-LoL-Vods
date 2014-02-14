@@ -1,10 +1,12 @@
-from xbmcswift2 import Plugin
 import urllib2
 import htmllib
 import json
+import time
 from collections import namedtuple
-from BeautifulSoup import BeautifulSoup
 from operator import attrgetter
+
+from BeautifulSoup import BeautifulSoup
+
 
 # CONSTANTS
 LOLEVENTURL = "http://www.reddit.com/r/loleventvods/new/.json"
@@ -18,7 +20,15 @@ class Reddit:
 
     def loadEvents(self, sortByStatus):
         req = urllib2.Request(LOLEVENTURL)
-        response = urllib2.urlopen(req)
+        response = None
+        try:
+            response = urllib2.urlopen(req)
+        except:
+            time.sleep(3)
+            try:
+                response = urllib2.urlopen(req)
+            except:
+                return None
 
         events = []
 
@@ -26,10 +36,18 @@ class Reddit:
         decoded_data = json.load(response)
         root = decoded_data['data']
 
-        LoLEvent = namedtuple('LoLEvent', 'title status eventId')
+        LoLEvent = namedtuple('LoLEvent', 'title status eventId imageUrl')
 
         # For Each Item in Children
         for post in root['children']:
+            html = post['data']['selftext_html']
+            if (html is not None):
+                soup = BeautifulSoup(self.unescape(html))
+
+                imgUrl = ''
+                link = soup.find('a', 'href=#EVENT_PICTURE')
+                if (link is not None):
+                    imgUrl = link.title
 
             status = 99
             if (post['data']['link_flair_text']== ACTIVE_STRING):
@@ -40,7 +58,8 @@ class Reddit:
 
             childEvent = LoLEvent(title = post['data']['title'],
                                   status = status,
-                                  eventId = post['data']['id'])
+                                  eventId = post['data']['id'],
+                                  imageUrl = imgUrl)
 
             events.append(childEvent)
 
@@ -59,7 +78,15 @@ class Reddit:
         url = LOLMATCHESURL % eventId
 
         req = urllib2.Request(url)
-        response = urllib2.urlopen(req)
+        response = None
+        try:
+            response = urllib2.urlopen(req)
+        except:
+            time.sleep(3)
+            try:
+                response = urllib2.urlopen(req)
+            except:
+                return None
         # Now lets parse results
         decoded_data = json.load(response)
 
@@ -88,11 +115,11 @@ class Reddit:
                 for row in rows :
                     cols = row.findAll("th")
                     for i, col in enumerate(cols):
-                     if (col.text == "YouTube"):
+                     if (col.text.lower() == "youtube"):
                          YouTubeColumns.append(i)
-                     if (col.text == "Team 1"):
+                     if (col.text.lower() == "team 1"):
                          Team1Index = i
-                     if (col.text == "Team 2"):
+                     if (col.text.lower() == "team 2"):
                          Team2Index = i
 
                 #
