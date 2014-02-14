@@ -1,19 +1,22 @@
 from xbmcswift2 import Plugin
 import urllib2
+import htmllib
 import json
-import re
-import LoLEventVODS.LoLEvent
-import LoLEventVODS.Match
-import LoLEventVODS.MatchSection
 from collections import namedtuple
+from BeautifulSoup import BeautifulSoup
+from operator import attrgetter
 
 # CONSTANTS
 LOLEVENTURL = "http://www.reddit.com/r/loleventvods/new/.json"
 LOLMATCHESURL = "http://www.reddit.com/r/loleventvods/comments/%s/.json"
+ACTIVE_STRING = "In progress"
+FINISHED_STRING = "Finished"
+NOTSTREAMED_STRING = "**Not Streamed**"
 
 class Reddit:
 
-    def loadEvents(self):
+
+    def loadEvents(self, sortByStatus):
         req = urllib2.Request(LOLEVENTURL)
         response = urllib2.urlopen(req)
 
@@ -23,14 +26,36 @@ class Reddit:
         decoded_data = json.load(response)
         root = decoded_data['data']
 
+        LoLEvent = namedtuple('LoLEvent', 'title status eventId')
+
         # For Each Item in Children
         for post in root['children']:
-            childEvent = LoLEventVODS.LoLEvent.LoLEvent(post)
+
+            status = 99
+            if (post['data']['link_flair_text']== ACTIVE_STRING):
+                status = 0
+
+            if (post['data']['link_flair_text']== FINISHED_STRING):
+                status = 1
+
+            childEvent = LoLEvent(title = post['data']['title'],
+                                  status = status,
+                                  eventId = post['data']['id'])
+
             events.append(childEvent)
 
-        return events
+
+        if (sortByStatus):
+            # sort
+            return sorted(events, key=attrgetter('status'))
+        else:
+            return events
 
     def loadEventContent(self, eventId):
+
+        LoLEventDay = namedtuple('LoLEventDay', 'dayId day matches')
+        LoLEventMatch = namedtuple('LoLEventMatch', 'gameId team1 team2 videoLinks')
+
         url = LOLMATCHESURL % eventId
 
         req = urllib2.Request(url)
@@ -38,19 +63,66 @@ class Reddit:
         # Now lets parse results
         decoded_data = json.load(response)
 
-        selfText = decoded_data[0]['data']['children'][0]['data']['selftext']
+        selfText = decoded_data[0]['data']['children'][0]['data']['selftext_html']
 
-        with open('bla.txt', 'w') as f:
-            f.write(repr(selfText))
-        f.close
-        events = []
+        eventTitle = ''
+        days = []
 
-        # PARSE EVENT MATCHES
-        REG_EX = "##((.*/\n*)+?)---"
-        # For Each Item in Children
-        # Parse the string in inner_text
+        soup = BeautifulSoup(self.unescape(selfText))
 
-        matchobj = re.findall(REG_EX, selfText, re.M|re.U)
+        # find all tables
+        tables = soup.findAll("table")
+        for idx, table in enumerate(tables):
+            if (table is not None):
 
+                titleLink = table.find("a", href="http://www.table_title.com")
+                if (titleLink is not None):
+                    eventTitle = titleLink['title']
 
-        return
+                YouTubeColumns = []
+                Team1Index = -1
+                Team2Index = -1
+
+                # Investigate the right columns for youtube links
+                rows = table.find("thead").findAll("tr")
+                for row in rows :
+                    cols = row.findAll("th")
+                    for i, col in enumerate(cols):
+                     if (col.text == "YouTube"):
+                         YouTubeColumns.append(i)
+                     if (col.text == "Team 1"):
+                         Team1Index = i
+                     if (col.text == "Team 2"):
+                         Team2Index = i
+
+                #
+                matches=[]
+
+                rows = table.find("tbody").findAll("tr")
+                for row in rows :
+                    videos = []
+                    cols = row.findAll("td")
+                    if (cols is not None):
+                        for yv in YouTubeColumns:
+                            if (cols[yv] is not None):
+                                if (cols[yv].a is not None):
+                                    videos.append({'text' : cols[yv].a.text, 'link' : cols[yv].a['href']})
+
+                    matches.append(LoLEventMatch(cols[0].text, cols[Team1Index].text, cols[Team2Index].text, videos))
+
+                # for row in table_data:
+                #     for i, col in enumerate(row):
+
+                            # for YouTubeCol in YouTubeColumns:
+                            # print cols[YouTubeCol-1]
+
+                days.append(LoLEventDay(dayId = idx,
+                                    day=eventTitle,
+                                    matches = matches))
+        return days
+
+    def unescape(self, s):
+        p = htmllib.HTMLParser(None)
+        p.save_bgn()
+        p.feed(s)
+        return p.save_end()
