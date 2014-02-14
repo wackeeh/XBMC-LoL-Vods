@@ -2,10 +2,12 @@ import urllib2
 import htmllib
 import json
 import time
+import re
 from collections import namedtuple
 from operator import attrgetter
 
 from BeautifulSoup import BeautifulSoup
+
 
 
 # CONSTANTS
@@ -133,7 +135,10 @@ class Reddit:
                         for yv in YouTubeColumns:
                             if (cols[yv] is not None):
                                 if (cols[yv].a is not None):
-                                    videos.append({'text' : cols[yv].a.text, 'link' : cols[yv].a['href']})
+                                    youTubeData = self.parseYouTubeUrl(cols[yv].a['href'])
+                                    videos.append({'text' : cols[yv].a.text,
+                                                   'videoId' : youTubeData['videoId'],
+                                                   'time' : youTubeData['time'] })
 
                     matches.append(LoLEventMatch(cols[0].text, cols[Team1Index].text, cols[Team2Index].text, videos))
 
@@ -153,3 +158,18 @@ class Reddit:
         p.save_bgn()
         p.feed(s)
         return p.save_end()
+
+    def parseYouTubeUrl(self, url):
+        youtube_id = 'EMPTY'
+        youtube_Time = ''
+        matches = re.findall("(\?|\&)([^=]+)\=([^&]+)", url)
+        if (matches is not None):
+            for match in matches:
+                if (match is not None):
+                    if (match[1] == "v"):
+                        youtube_id = match[2]
+                    if (match[1] == "t"):
+                        youtube_Time = match[2]
+
+        return {'videoId' : youtube_id,
+                 'time' : youtube_Time}

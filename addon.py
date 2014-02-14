@@ -1,5 +1,3 @@
-import re
-
 from xbmcswift2 import Plugin
 
 from Reddit import Reddit
@@ -46,7 +44,7 @@ def show_event(eventId):
     days = r.loadEventContent(eventId)
     #loadEventMatches(eventId)
     for day in days:
-        item  = { 'label': day.day, 'path': plugin.url_for('show_matches', eventId=eventId, dayId = day.dayId) }
+        item  = { 'label': day.day.replace('&amp;', '&'), 'path': plugin.url_for('show_matches', eventId=eventId, dayId = day.dayId) }
         items.append(item)
 
     return items
@@ -82,12 +80,15 @@ def show_videos(eventId, dayId, gameId):
                 for video in match.videoLinks:
                     if (video is not None):
                         # We can iterate the video links
-                        if (video['text'] is not None and video['link'] is not None):
-                            videoLink = play_match(video['link'])
-                            playable = (videoLink != "")
-                            item  = { 'label': video['text'].replace('&amp;', '&'),
-                                      'path': videoLink,
-                                      'is_playable': playable}
+                        if (video['text'] is not None and video['videoId'] is not None):
+                            if (video['videoId'] is not None and video['videoId'] != 'EMPTY'):
+                                youtube_url = 'plugin://plugin.video.youtube/?action=play_video&videoid=%s' % video['videoId']
+                            else:
+                                youtube_url = ""
+
+                            item  = { 'label': video['text'].replace('&amp;', '&') + " @" + video['time'] + "",
+                                      'path': youtube_url,
+                                      'is_playable': True}
                             items.append(item)
 
     return items
@@ -97,20 +98,8 @@ def play_match(url):
     r = Reddit.Reddit()
 
     youtube_id = 'EMPTY'
-    youtube_Time = ''
-    matches = re.findall("(\?|\&)([^=]+)\=([^&]+)", url)
-    if (matches is not None):
-        for match in matches:
-            if (match is not None):
-                if (match[1] == "v"):
-                    youtube_id = match[2]
-                if (match[1] == "t"):
-                    youtube_Time = match[2]
+    r.parseYouTubeUrl(url)
 
-    if youtube_id != 'EMPTY':
-        youtube_url = 'plugin://plugin.video.youtube/?action=play_video&videoid=%s' % youtube_id
-    else:
-        youtube_url = ""
 
     return youtube_url
 
