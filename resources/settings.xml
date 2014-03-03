@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+    <category label="Spoilers">
+        <setting id="highlight_recommended_games" type="bool" default="false" label="Highlight Recommended Games in the Match overview?"/>
+        <setting id="include_current_lcs_standings" type="bool" default="false" label="Include the current LCS standings in Match Overview?"/>
+    </category>
+</settings>
